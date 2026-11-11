@@ -35,10 +35,13 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.comments.*;
+import com.github.javaparser.ast.expr.InstanceOfExpr;
+import com.github.javaparser.ast.expr.PatternExpr;
 import com.github.javaparser.ast.observer.AstObserver;
 import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.observer.PropagatingAstObserver;
 import com.github.javaparser.ast.type.PrimitiveType;
+import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.visitor.TreeVisitor;
 import com.github.javaparser.printer.ConcreteSyntaxModel;
 import com.github.javaparser.printer.Printer;
@@ -670,7 +673,7 @@ public class LexicalPreservingPrinter {
             nodeTokens = Collections.emptyList();
         }
         List<Pair<Range, TextElement>> elements = new LinkedList<>();
-        for (Node child : node.getChildNodes()) {
+        for (Node child : childrenPrintedBy(node)) {
             if (!child.isPhantom()) {
                 if (!child.hasRange()) {
                     throw new RuntimeException("Range not present on node " + child);
@@ -684,6 +687,30 @@ public class LexicalPreservingPrinter {
         elements.sort(comparing(e -> e.a.begin));
         node.setData(
                 NODE_TEXT_DATA, new NodeText(elements.stream().map(p -> p.b).collect(toList())));
+    }
+
+    /*
+     * Returns the children whose text is part of the text of the given node. These are its child nodes, except for
+     * the type of a pattern used in an instanceof expression: the parser shares that type between the pattern and
+     * the instanceof expression, which becomes its parent, but it is the pattern which prints it.
+     */
+    private static List<Node> childrenPrintedBy(Node node) {
+        List<Node> children = new ArrayList<>(node.getChildNodes());
+        if (node instanceof InstanceOfExpr) {
+            InstanceOfExpr instanceOfExpr = (InstanceOfExpr) node;
+            if (instanceOfExpr.getPattern().isPresent()) {
+                children.removeIf(child -> child == instanceOfExpr.getType());
+            }
+        } else if (node instanceof PatternExpr) {
+            Type type = ((PatternExpr) node).getType();
+            boolean sharedWithInstanceOfExpr = node.getParentNode()
+                    .filter(parent -> parent instanceof InstanceOfExpr && ((InstanceOfExpr) parent).getType() == type)
+                    .isPresent();
+            if (sharedWithInstanceOfExpr) {
+                children.add(type);
+            }
+        }
+        return children;
     }
 
     //

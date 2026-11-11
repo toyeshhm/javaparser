@@ -488,7 +488,11 @@ public class ConcreteSyntaxModel {
                         space(),
                         token(GeneratedJavaParserConstants.INSTANCEOF),
                         space(),
-                        child(ObservableProperty.TYPE)));
+                        conditional(
+                                ObservableProperty.PATTERN,
+                                IS_PRESENT,
+                                child(ObservableProperty.PATTERN),
+                                child(ObservableProperty.TYPE))));
         concreteSyntaxModelByClass.put(
                 IntegerLiteralExpr.class, sequence(comment(), attribute(ObservableProperty.VALUE)));
         concreteSyntaxModelByClass.put(

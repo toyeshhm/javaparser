@@ -263,8 +263,9 @@ class TypeOwnerStrategy implements TokenOwnerDetector.DetectionStrategy {
             InstanceOfExpr instanceOf = (InstanceOfExpr) parent;
             // Verify current is the type being checked
             if (current.equals(instanceOf.getType()) || isAncestorOf(instanceOf.getType(), current)) {
-                // The instanceof expression owns the type tokens
-                return Optional.of(parent);
+                // The instanceof expression owns the type tokens, unless it has a pattern, which then prints the type
+                return Optional.of(
+                        instanceOf.getPattern().map(pattern -> (Node) pattern).orElse(parent));
             }
         }
         // Record pattern expression
